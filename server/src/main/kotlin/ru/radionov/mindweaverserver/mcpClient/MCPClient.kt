@@ -1,4 +1,6 @@
-package ru.radionov.mindweaverserver
+@file:OptIn(ExperimentalTime::class)
+
+package ru.radionov.mindweaverserver.mcpClient
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -29,51 +31,22 @@ import kotlinx.io.buffered
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
+import ru.radionov.mindweaverserver.ApiConfiguration
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
-import java.util.Properties
 import kotlin.collections.forEach
 import kotlin.collections.isNotEmpty
 import kotlin.collections.map
 import kotlin.collections.orEmpty
-import kotlin.text.isNullOrEmpty
 import kotlin.text.trimIndent
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
-val httpClient = HttpClient(CIO) {
-    install(ContentNegotiation) {
-        json(
-            Json {
-                ignoreUnknownKeys = true
-                prettyPrint = true
-            }
-        )
-    }
-
-    install(Logging) {
-        level = LogLevel.INFO
-    }
-
-    val properties = Properties()
-
-    defaultRequest {
-        url {
-            protocol = URLProtocol.HTTPS
-            host = "api.github.com"
-        }
-
-        val token = properties.getProperty("github.api.key")
-        if (!token.isNullOrEmpty()) {
-            header("Authorization", "Bearer $token")
-        }
-        header("Accept", "application/vnd.github+json")
-
-    }
-}
-
-class MCPClient() {
+class MCPClient(private val config: ApiConfiguration) {
     private val clientOut = PipedOutputStream()
     private val serverIn = PipedInputStream(clientOut)
     private val serverOut = PipedOutputStream()
@@ -86,6 +59,32 @@ class MCPClient() {
         inputStream = serverIn.asSource().buffered(),
         outputStream = serverOut.asSink().buffered()
     )
+    val httpClient = HttpClient(CIO) {
+        install(ContentNegotiation) {
+            json(
+                Json {
+                    ignoreUnknownKeys = true
+                    prettyPrint = true
+                }
+            )
+        }
+
+        install(Logging) {
+            level = LogLevel.INFO
+        }
+
+        defaultRequest {
+            url {
+                protocol = URLProtocol.HTTPS
+                host = "api.github.com"
+            }
+
+            val token = config.githubApiKey
+
+            header("Authorization", "Bearer $token")
+            header("Accept", "application/vnd.github+json")
+        }
+    }
     private val server = Server(
         serverInfo = Implementation(
             name = "example-server",
@@ -123,6 +122,14 @@ class MCPClient() {
                         put("type", "string")
                         put("description", "Repository name (e.g. Hello-World)")
                     }
+                    putJsonObject("since") {
+                        put("type", "string")
+                        put("description", "Only commits after this date will be returned (ISO-8601, e.g. 2025-08-16T00:00:00Z)")
+                    }
+                    putJsonObject("until") {
+                        put("type", "string")
+                        put("description", "Only commits before this date will be returned (ISO-8601, e.g. 2025-08-17T00:00:00Z)")
+                    }
                 },
                 required = listOf("owner", "repo")
             )
@@ -133,7 +140,15 @@ class MCPClient() {
             val repo = request.arguments["repo"]?.jsonPrimitive?.content ?: return@addTool CallToolResult(
                 content = listOf(TextContent("The 'repo' parameter is required."))
             )
-            val commits = httpClient.getCommits(owner, repo)
+            val since = request.arguments["since"]?.jsonPrimitive?.contentOrNull
+            val until = request.arguments["until"]?.jsonPrimitive?.contentOrNull
+
+            val commits = httpClient.getCommits(
+                owner = owner,
+                repo = repo,
+                since = since?.let { Instant.parse(it) },
+                until = until?.let { Instant.parse(it) }
+            )
             CallToolResult(content = commits.map { TextContent(it) })
         }
 
@@ -173,12 +188,23 @@ class MCPClient() {
         return result?.content as List<TextContent>?
     }
 
-    suspend fun summarizeCommits(owner: String, repo: String): List<TextContent>? {
+    suspend fun summarizeCommits(
+        owner: String,
+        repo: String,
+        since: Instant? = null,
+        until: Instant? = null,
+    ): List<TextContent>? {
         // if server is active
 
         val arguments = buildJsonObject {
             put("owner", owner)
             put("repo", repo)
+            if (since != null) {
+                put("since", since.toString())
+            }
+            if (until != null) {
+                put("until", until.toString())
+            }
         }
 
         // Вызов tool
@@ -193,10 +219,20 @@ class MCPClient() {
     }
 }
 
-
-private suspend fun HttpClient.getCommits(owner: String, repo: String): List<String> {
+private suspend fun HttpClient.getCommits(
+    owner: String,
+    repo: String,
+    since: Instant? = null,
+    until: Instant? = null,
+): List<String> {
     val uri = "/repos/$owner/$repo/commits"
-    val commits = this.get(uri).body<List<Commit>>()
+    val commits = this.get(uri) {
+        url {
+            since?.let { parameters.append("since", it.toString()) }
+            until?.let { parameters.append("until", it.toString()) }
+        }
+    }.body<List<Commit>>()
+
     return commits.map { commit ->
         """
             SHA: ${commit.sha}

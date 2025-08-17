@@ -1,20 +1,41 @@
-# 1. Используем Gradle для сборки fat-jar
+## 1. Используем Gradle для сборки fat-jar
+#FROM gradle:8.7-jdk17 AS builder
+#WORKDIR /app
+#COPY . .
+#
+## Используем buildFatJar для создания fat JAR
+#RUN gradle clean buildFatJar --no-daemon
+#
+## Этап запуска
+#FROM openjdk:17-jdk-slim
+#WORKDIR /app
+## Копируем fat JAR
+#COPY --from=builder /app/server/build/libs/mindweaverserver-1.0.0-all.jar ./
+## Переменные, определенные в .env
+#ENV TG_BOT_TOKEN=changeme
+#ENV TG_CHAT_ID=changeme
+#ENV CHAT_GPT_API_KEY=changeme
+#ENV GITHUB_OWNER_NAME=changeme
+#ENV GITHUB_REPO_NAME=changeme
+#ENV GITHUB_API_TOKEN=changeme
+#
+## Запускаем fat JAR
+#CMD ["java", "-jar", "mindweaverserver-1.0.0-all.jar"]
 FROM gradle:8.7-jdk17 AS builder
+
 WORKDIR /app
 COPY . .
-# Используем buildFatJar для создания fat JAR
-RUN gradle clean buildFatJar --no-daemon
-# Отладка: вывести содержимое /app/build/libs/ (уберите после тестирования)
-RUN ls -la /app/server/build/libs/
 
-# Этап запуска
+# Устанавливаем сертификаты (если базовый образ slim, то часто нужны)
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Собираем fat JAR
+RUN ./gradlew clean buildFatJar --no-daemon
+
+# Финальный образ
 FROM openjdk:17-jdk-slim
+
 WORKDIR /app
-# Копируем fat JAR (используйте маску, если имя точно неизвестно)
 COPY --from=builder /app/server/build/libs/mindweaverserver-1.0.0-all.jar ./
-# Или укажите точное имя: COPY --from=builder /app/build/libs/mindweaverserver-1.0.0-all.jar ./
-ENV TG_BOT_TOKEN=changeme
-ENV TG_CHAT_ID=changeme
-# Запускаем fat JAR
-CMD ["java", "-jar", "mindweaverserver-1.0.0-all.jar"]
-# Если имя JAR отличается, замените на реальное (проверьте по ls)
+
+ENTRYPOINT ["java", "-jar", "mindweaverserver-1.0.0-all.jar"]
