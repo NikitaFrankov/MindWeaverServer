@@ -35,7 +35,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
-import ru.radionov.mindweaverserver.ApiConfiguration
+import ru.radionov.mindweaverserver.utils.ApiConfiguration
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
 import kotlin.collections.forEach

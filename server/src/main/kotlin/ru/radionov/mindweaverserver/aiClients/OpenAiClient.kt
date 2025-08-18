@@ -16,7 +16,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-import ru.radionov.mindweaverserver.ApiConfiguration
+import ru.radionov.mindweaverserver.utils.ApiConfiguration
 import ru.radionov.mindweaverserver.models.ChatMessage
 import ru.radionov.mindweaverserver.models.ChatRequest
 import ru.radionov.mindweaverserver.models.ChatResponse
@@ -50,7 +50,7 @@ class OpenAiClient(private val config: ApiConfiguration) {
             model = "gpt-3.5-turbo",
             messages = messages,
             temperature = 0.7,
-            maxTokens = 900
+            maxTokens = 600
         )
 
         return createChatCompletion(request).fold(

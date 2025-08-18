@@ -5,6 +5,7 @@ import kotlinx.coroutines.runBlocking
 import ru.radionov.mindweaverserver.aiClients.OpenAiClient
 import ru.radionov.mindweaverserver.mcp.ai.AiAnalyzerMCP
 import ru.radionov.mindweaverserver.mcp.github.GithubMCP
+import ru.radionov.mindweaverserver.utils.ApiConfiguration
 import ru.radionov.mindweaverserver.utils.sendToTelegram
 import kotlin.time.Clock
 import kotlin.time.Duration

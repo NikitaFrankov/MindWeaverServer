@@ -1,7 +1,6 @@
-package ru.radionov.mindweaverserver
+package ru.radionov.mindweaverserver.utils
 
 import java.util.Properties
-import kotlin.jvm.java
 
 data class ApiConfiguration(
     val openAiApiKey: String,
@@ -14,7 +13,7 @@ data class ApiConfiguration(
     companion object {
         fun load(): ApiConfiguration {
             val properties = Properties()
-            
+
             // Try to load from config file first
             try {
                 val configStream = ApiConfiguration::class.java.classLoader
@@ -25,7 +24,7 @@ data class ApiConfiguration(
             } catch (e: Exception) {
                 // Config file not found, will use environment variables
             }
-            
+
             return ApiConfiguration(
                 openAiApiKey = properties.getProperty("openai.api.key").orEmpty(),
                 tgToken = properties.getProperty("tg.bot.token").orEmpty(),
