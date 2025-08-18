@@ -21,7 +21,7 @@ import ru.radionov.mindweaverserver.models.ChatMessage
 import ru.radionov.mindweaverserver.models.ChatRequest
 import ru.radionov.mindweaverserver.models.ChatResponse
 
-class ChatGPTApiClient(private val config: ApiConfiguration) {
+class OpenAiClient(private val config: ApiConfiguration) {
     val baseUrl: String = "https://openrouter.ai/api/v1"
     private val json = Json {
         ignoreUnknownKeys = true
@@ -30,7 +30,7 @@ class ChatGPTApiClient(private val config: ApiConfiguration) {
 
     private val client = HttpClient {
         install(ContentNegotiation) {
-            json(this@ChatGPTApiClient.json)
+            json(this@OpenAiClient.json)
         }
         install(Logging) {
             logger = Logger.Companion.DEFAULT

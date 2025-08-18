@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalTime::class)
 
-package ru.radionov.mindweaverserver.mcpClient
+package ru.radionov.mindweaverserver.mcp.github
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -46,7 +46,7 @@ import kotlin.text.trimIndent
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
-class MCPClient(private val config: ApiConfiguration) {
+class GithubMCP(private val config: ApiConfiguration) {
     private val clientOut = PipedOutputStream()
     private val serverIn = PipedInputStream(clientOut)
     private val serverOut = PipedOutputStream()
@@ -59,32 +59,7 @@ class MCPClient(private val config: ApiConfiguration) {
         inputStream = serverIn.asSource().buffered(),
         outputStream = serverOut.asSink().buffered()
     )
-    val httpClient = HttpClient(CIO) {
-        install(ContentNegotiation) {
-            json(
-                Json {
-                    ignoreUnknownKeys = true
-                    prettyPrint = true
-                }
-            )
-        }
-
-        install(Logging) {
-            level = LogLevel.INFO
-        }
-
-        defaultRequest {
-            url {
-                protocol = URLProtocol.HTTPS
-                host = "api.github.com"
-            }
-
-            val token = config.githubApiKey
-
-            header("Authorization", "Bearer $token")
-            header("Accept", "application/vnd.github+json")
-        }
-    }
+    val httpClient = createHttpClient()
     private val server = Server(
         serverInfo = Implementation(
             name = "example-server",
@@ -216,6 +191,33 @@ class MCPClient(private val config: ApiConfiguration) {
         val result = client.callTool(request)
 
         return result?.content as List<TextContent>?
+    }
+
+    private fun createHttpClient() = HttpClient(CIO) {
+        install(ContentNegotiation) {
+            json(
+                Json {
+                    ignoreUnknownKeys = true
+                    prettyPrint = true
+                }
+            )
+        }
+
+        install(Logging) {
+            level = LogLevel.INFO
+        }
+
+        defaultRequest {
+            url {
+                protocol = URLProtocol.HTTPS
+                host = "api.github.com"
+            }
+
+            val token = config.githubApiKey
+
+            header("Authorization", "Bearer $token")
+            header("Accept", "application/vnd.github+json")
+        }
     }
 }
 
