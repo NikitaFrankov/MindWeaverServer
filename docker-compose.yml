@@ -6,4 +6,4 @@ services:
     container_name: mcp-app
     env_file:
       - .env        # берем TG_BOT_TOKEN и TG_CHAT_ID, создайте свой файл, он должен находиться в той же папке, что и docker-compose.yaml
-    restart: always
+    restart: no
