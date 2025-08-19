@@ -47,10 +47,10 @@ class OpenAiClient(private val config: ApiConfiguration) {
         messages: List<ChatMessage>
     ): Result<String> {
         val request = ChatRequest(
-            model = "gpt-3.5-turbo",
+            model = "qwen/qwen2.5-vl-32b-instruct:free",
             messages = messages,
             temperature = 0.7,
-            maxTokens = 600
+            maxTokens = 1000
         )
 
         return createChatCompletion(request).fold(
